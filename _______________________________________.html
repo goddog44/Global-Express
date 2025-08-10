@@ -1,0 +1,1674 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Trade Solutions - Import/Export Excellence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                        secondary: '#1E40AF',
+                        accent: '#059669'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .nav-link {
+            position: relative;
+            color: #6b7280;
+            transition: color 0.3s ease;
+        }
+        .nav-link:hover {
+            color: #5D5CDE;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -4px;
+            left: 50%;
+            background-color: #5D5CDE;
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        .dark .nav-link {
+            color: #d1d5db;
+        }
+        .dark .nav-link:hover {
+            color: #5D5CDE;
+        }
+        
+        .loading-spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #5D5CDE;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .map-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+            overflow: hidden;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(209, 213, 219, 0.3);
+        }
+
+        #interactiveMap {
+            height: 500px;
+            width: 100%;
+        }
+
+        .timeline-container {
+            margin-top: 2rem;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 1.5rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0.5rem;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #5D5CDE;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1.5rem;
+            background: white;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-left: 1rem;
+            border-left: 3px solid #5D5CDE;
+        }
+
+        .dark .timeline-item {
+            background: #1f2937;
+            border-left-color: #7B68EE;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -0.75rem;
+            top: 1.25rem;
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 50%;
+            background: #5D5CDE;
+        }
+
+        .dark .timeline-item::before {
+            background: #7B68EE;
+        }
+
+        .timeline-item.active::before {
+            background: #059669;
+            animation: pulse 2s infinite;
+        }
+
+        .timeline-date {
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .dark .timeline-date {
+            color: #9ca3af;
+        }
+
+        .timeline-status {
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 0.25rem;
+        }
+
+        .dark .timeline-status {
+            color: #f3f4f6;
+        }
+
+        .timeline-location {
+            color: #5D5CDE;
+            font-size: 0.875rem;
+        }
+
+        .dark .timeline-location {
+            color: #7B68EE;
+        }
+
+        .speed-controls {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .speed-btn {
+            background: #5D5CDE;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+        }
+
+        .speed-btn:hover {
+            background: #7B68EE;
+            transform: translateY(-1px);
+        }
+
+        .speed-btn.active {
+            background: #059669;
+        }
+
+        .dark .speed-btn {
+            background: #4f46e5;
+        }
+
+        .dark .speed-btn:hover {
+            background: #6366f1;
+        }
+
+        .dark .speed-btn.active {
+            background: #059669;
+        }
+
+        .eta-info {
+            text-align: center;
+            background: #5D5CDE;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .dark .eta-info {
+            background: #4f46e5;
+        }
+
+        /* Animation for the active point */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        .hero-image {
+            background-image: url('https://www.lemoci.com/wp-content/uploads/2020/05/bollore-logistics-lvmh-pont-aerien-chine-29-mars-2020-roissy-cdg-scaled.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        
+        @media (max-width: 768px) {
+            .hero-image {
+                background-position: 70% center;
+            }
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm z-50 border-b border-gray-200 dark:border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-globe text-2xl text-primary mr-3"></i>
+                    <span class="font-bold text-xl">Global Trade Solutions</span>
+                </div>
+                
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#home" class="nav-link">Home</a>
+                    <a href="#about" class="nav-link">About</a>
+                    <a href="#services" class="nav-link">Services</a>
+                    <a href="#tracking" class="nav-link">Tracking</a>
+                    <a href="#testimonials" class="nav-link">Testimonials</a>
+                    <a href="#contact" class="nav-link">Contact</a>
+                    <a href="#blog" class="nav-link">Blog</a>
+                </div>
+
+                <!-- Controls -->
+                <div class="flex items-center space-x-4">
+                    <!-- Language Toggle -->
+                    <button id="langToggle" class="px-3 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                        EN
+                    </button>
+                    
+                    <!-- Dark Mode Toggle -->
+                    <button id="darkToggle" class="p-2 rounded-md bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                        <i class="fas fa-moon dark:hidden"></i>
+                        <i class="fas fa-sun hidden dark:block"></i>
+                    </button>
+
+                    <!-- Mobile Menu Button -->
+                    <button id="mobileMenu" class="md:hidden p-2">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation -->
+        <div id="mobileNav" class="hidden md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+            <div class="px-4 py-2 space-y-2">
+                <a href="#home" class="block py-2 nav-link">Home</a>
+                <a href="#about" class="block py-2 nav-link">About</a>
+                <a href="#services" class="block py-2 nav-link">Services</a>
+                <a href="#tracking" class="block py-2 nav-link">Tracking</a>
+                <a href="#testimonials" class="block py-2 nav-link">Testimonials</a>
+                <a href="#contact" class="block py-2 nav-link">Contact</a>
+                <a href="#blog" class="block py-2 nav-link">Blog</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Home Section -->
+    <section id="home" class="pt-16 min-h-screen hero-image">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div class="bg-white/90 dark:bg-gray-900/90 p-8 rounded-xl backdrop-blur-sm">
+                    <h1 class="text-4xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white" data-en="Global Trade Excellence" data-fr="Global Trade Excellence">Global Trade Excellence</h1>
+                    <p class="text-xl mb-8 text-gray-600 dark:text-gray-300" data-en="Connecting businesses worldwide through seamless import, export, and logistics solutions. Your trusted partner for international trade success." data-fr="Connecter les entreprises du monde entier grâce à des solutions d'importation, d'exportation et de logistique transparentes. Votre partenaire de confiance pour le succès du commerce international.">Connecting businesses worldwide through seamless import, export, and logistics solutions. Your trusted partner for international trade success.</p>
+                    
+                    <!-- Quick Tracking Form -->
+                    <div class="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-6 rounded-xl shadow-lg mb-8">
+                        <h3 class="text-lg font-semibold mb-4" data-en="Quick Package Tracking" data-fr="Suivi Rapide de Colis">Quick Package Tracking</h3>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input 
+                                type="text" 
+                                id="heroTrackingCode" 
+                                placeholder="Enter tracking code..." 
+                                class="flex-1 px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                data-en-placeholder="Enter tracking code..."
+                                data-fr-placeholder="Entrez votre code de suivi..."
+                            >
+                            <button 
+                                id="heroTrackButton" 
+                                class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                                data-en="Track Now"
+                                data-fr="Suivre Maintenant"
+                            >Track Now</button>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-2" data-en="Try: GT2024001234" data-fr="Essayez: GT2024001234">Try: GT2024001234</p>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4 mb-12">
+                        <button class="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-lg font-semibold transition-colors" data-en="Get Quote" data-fr="Obtenir un Devis">Get Quote</button>
+                        <button class="border-2 border-primary text-primary hover:bg-primary hover:text-white px-8 py-3 rounded-lg font-semibold transition-colors" data-en="Our Services" data-fr="Nos Services">Our Services</button>
+                    </div>
+
+                    <!-- Mission, Vision, Values -->
+                    <div class="grid sm:grid-cols-3 gap-6">
+                        <div class="text-center">
+                            <i class="fas fa-bullseye text-3xl text-primary mb-3"></i>
+                            <h3 class="font-semibold mb-2" data-en="Mission" data-fr="Mission">Mission</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-300" data-en="Simplify global trade" data-fr="Simplifier le commerce mondial">Simplify global trade</p>
+                        </div>
+                        <div class="text-center">
+                            <i class="fas fa-eye text-3xl text-primary mb-3"></i>
+                            <h3 class="font-semibold mb-2" data-en="Vision" data-fr="Vision">Vision</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-300" data-en="Leading trade solutions" data-fr="Solutions commerciales de pointe">Leading trade solutions</p>
+                        </div>
+                        <div class="text-center">
+                            <i class="fas fa-heart text-3xl text-primary mb-3"></i>
+                            <h3 class="font-semibold mb-2" data-en="Values" data-fr="Valeurs">Values</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-300" data-en="Trust & Excellence" data-fr="Confiance & Excellence">Trust & Excellence</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="relative hidden md:block">
+                    <!-- Empty div for spacing on desktop -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-20 bg-white dark:bg-gray-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4" data-en="About Global Trade Solutions" data-fr="À Propos de Global Trade Solutions">About Global Trade Solutions</h2>
+                <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto" data-en="Over 20 years of excellence in international trade, connecting businesses across continents with reliable, efficient solutions." data-fr="Plus de 20 ans d'excellence dans le commerce international, connectant les entreprises à travers les continents avec des solutions fiables et efficaces.">Over 20 years of excellence in international trade, connecting businesses across continents with reliable, efficient solutions.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-12 mb-16">
+                <!-- History -->
+                <div class="text-center">
+                    <i class="fas fa-history text-4xl text-primary mb-6"></i>
+                    <h3 class="text-xl font-bold mb-4" data-en="Our History" data-fr="Notre Histoire">Our History</h3>
+                    <p class="text-gray-600 dark:text-gray-300" data-en="Founded in 2003, we've grown from a small freight forwarder to a global trade solutions leader, serving over 5,000 clients worldwide." data-fr="Fondée en 2003, nous avons évolué d'un petit transitaire à un leader mondial des solutions commerciales, servant plus de 5 000 clients dans le monde.">Founded in 2003, we've grown from a small freight forwarder to a global trade solutions leader, serving over 5,000 clients worldwide.</p>
+                </div>
+
+                <!-- Team -->
+                <div class="text-center">
+                    <i class="fas fa-users text-4xl text-primary mb-6"></i>
+                    <h3 class="text-xl font-bold mb-4" data-en="Expert Team" data-fr="Équipe d'Experts">Expert Team</h3>
+                    <p class="text-gray-600 dark:text-gray-300" data-en="Our team of 150+ trade professionals brings decades of combined experience in customs, logistics, and international regulations." data-fr="Notre équipe de plus de 150 professionnels du commerce apporte des décennies d'expérience combinée en douanes, logistique et réglementations internationales.">Our team of 150+ trade professionals brings decades of combined experience in customs, logistics, and international regulations.</p>
+                </div>
+
+                <!-- Certifications -->
+                <div class="text-center">
+                    <i class="fas fa-certificate text-4xl text-primary mb-6"></i>
+                    <h3 class="text-xl font-bold mb-4" data-en="Certifications" data-fr="Certifications">Certifications</h3>
+                    <p class="text-gray-600 dark:text-gray-300" data-en="ISO 9001:2015 certified, AEO status, and member of FIATA. Our commitment to quality and compliance is unmatched." data-fr="Certifié ISO 9001:2015, statut OEA, et membre de la FIATA. Notre engagement envers la qualité et la conformité est inégalé.">ISO 9001:2015 certified, AEO status, and member of FIATA. Our commitment to quality and compliance is unmatched.</p>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                <div>
+                    <div class="text-3xl font-bold text-primary mb-2">5,000+</div>
+                    <div class="text-gray-600 dark:text-gray-300" data-en="Happy Clients" data-fr="Clients Satisfaits">Happy Clients</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-primary mb-2">95%</div>
+                    <div class="text-gray-600 dark:text-gray-300" data-en="On-Time Delivery" data-fr="Livraison à Temps">On-Time Delivery</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-primary mb-2">150+</div>
+                    <div class="text-gray-600 dark:text-gray-300" data-en="Countries Served" data-fr="Pays Desservis">Countries Served</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-primary mb-2">24/7</div>
+                    <div class="text-gray-600 dark:text-gray-300" data-en="Support" data-fr="Support">Support</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="services" class="py-20 bg-gray-50 dark:bg-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4" data-en="Our Services" data-fr="Nos Services">Our Services</h2>
+                <p class="text-xl text-gray-600 dark:text-gray-300" data-en="Comprehensive trade solutions tailored to your business needs" data-fr="Solutions commerciales complètes adaptées aux besoins de votre entreprise">Comprehensive trade solutions tailored to your business needs</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8 mb-16">
+                <!-- Import Services -->
+                <div class="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg">
+                    <i class="fas fa-download text-4xl text-primary mb-6"></i>
+                    <h3 class="text-xl font-bold mb-4" data-en="Import Services" data-fr="Services d'Importation">Import Services</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-6" data-en="Streamlined import processes with full customs clearance, documentation, and compliance management." data-fr="Processus d'importation rationalisés avec dédouanement complet, documentation et gestion de la conformité.">Streamlined import processes with full customs clearance, documentation, and compliance management.</p>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-center"><i class="fas fa-check text-accent mr-2"></i><span data-en="Customs Clearance" data-fr="Dédouanement">Customs Clearance</span></li>
+                        <li class="flex items-center"><i class="fas fa-check text-accent mr-2"></i><span data-en="Documentation Support" data-fr="Support Documentaire">Documentation Support</span></li>
+                        <li class="flex items-center"><i class="fas fa-check text-accent mr-2"></i><span data-en="Compliance Management" data-fr="Gestion de la Conformité">Compliance Management</span></li>
+                    </ul>
+                </div>
+
+                <!-- Export Services -->
+                <div class="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg">
+                    <i class="fas fa-upload text-4xl text-primary mb-6"></i>
+                    <h3 class="text-xl font-bold mb-4" data-en="Export Solutions" data-fr="Solutions d'Exportation">Export Solutions</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-6" data-en="End-to-end export services helping you reach global markets efficiently and cost-effectively." data-fr="Services d'exportation de bout en bout vous aidant à atteindre les marchés mondiaux de manière efficace et rentable.">End-to-end export services helping you reach global markets efficiently and cost-effectively.</p>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-center"><i class="fas fa-check text-accent mr-2"></i><span data-en="Market Analysis" data-fr="Analyse de Marché">Market Analysis</span></li>
+                        <li class="flex items-center"><i class="fas fa-check text-accent mr-2"></i><span data-en="Export Documentation" data-fr="Documentation d'Exportation">Export Documentation</span></li>
+                        <li class="flex items-center"><i class="fas fa-check text-accent mr-2"></i><span data-en="Shipping Coordination" data-fr="Coordination d'Expédition">Shipping Coordination</span></li>
+                    </ul>
+                </div>
+
+                <!-- Logistics -->
+                <div class="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg">
+                    <i class="fas fa-truck text-4xl text-primary mb-6"></i>
+                    <h3 class="text-xl font-bold mb-4" data-en="Logistics Management" data-fr="Gestion Logistique">Logistics Management</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-6" data-en="Comprehensive logistics solutions including warehousing, transportation, and supply chain optimization." data-fr="Solutions logistiques complètes incluant l'entreposage, le transport et l'optimisation de la chaîne d'approvisionnement.">Comprehensive logistics solutions including warehousing, transportation, and supply chain optimization.</p>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-center"><i class="fas fa-check text-accent mr-2"></i><span data-en="Warehousing" data-fr="Entreposage">Warehousing</span></li>
+                        <li class="flex items-center"><i class="fas fa-check text-accent mr-2"></i><span data-en="Transportation" data-fr="Transport">Transportation</span></li>
+                        <li class="flex items-center"><i class="fas fa-check text-accent mr-2"></i><span data-en="Supply Chain Optimization" data-fr="Optimisation de la Chaîne d'Approvisionnement">Supply Chain Optimization</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Process & Pricing -->
+            <div class="grid md:grid-cols-2 gap-12">
+                <!-- Work Process -->
+                <div>
+                    <h3 class="text-2xl font-bold mb-6" data-en="Our Work Process" data-fr="Notre Processus de Travail">Our Work Process</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <div class="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 mt-1">1</div>
+                            <div>
+                                <h4 class="font-semibold mb-1" data-en="Consultation" data-fr="Consultation">Consultation</h4>
+                                <p class="text-gray-600 dark:text-gray-300" data-en="Understanding your needs and requirements" data-fr="Comprendre vos besoins et exigences">Understanding your needs and requirements</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 mt-1">2</div>
+                            <div>
+                                <h4 class="font-semibold mb-1" data-en="Planning" data-fr="Planification">Planning</h4>
+                                <p class="text-gray-600 dark:text-gray-300" data-en="Creating customized solutions" data-fr="Créer des solutions personnalisées">Creating customized solutions</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 mt-1">3</div>
+                            <div>
+                                <h4 class="font-semibold mb-1" data-en="Execution" data-fr="Exécution">Execution</h4>
+                                <p class="text-gray-600 dark:text-gray-300" data-en="Implementing and monitoring progress" data-fr="Mise en œuvre et suivi des progrès">Implementing and monitoring progress</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 mt-1">4</div>
+                            <div>
+                                <h4 class="font-semibold mb-1" data-en="Delivery" data-fr="Livraison">Delivery</h4>
+                                <p class="text-gray-600 dark:text-gray-300" data-en="Ensuring successful completion" data-fr="Assurer une completion réussie">Ensuring successful completion</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pricing Options -->
+                <div>
+                    <h3 class="text-2xl font-bold mb-6" data-en="Service Options" data-fr="Options de Service">Service Options</h3>
+                    <div class="space-y-4">
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h4 class="font-semibold mb-2" data-en="Standard Package" data-fr="Package Standard">Standard Package</h4>
+                            <p class="text-gray-600 dark:text-gray-300 text-sm mb-2" data-en="Basic import/export services" data-fr="Services d'import/export de base">Basic import/export services</p>
+                            <span class="text-primary font-bold" data-en="Contact for pricing" data-fr="Contactez pour le prix">Contact for pricing</span>
+                        </div>
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h4 class="font-semibold mb-2" data-en="Premium Package" data-fr="Package Premium">Premium Package</h4>
+                            <p class="text-gray-600 dark:text-gray-300 text-sm mb-2" data-en="Full-service logistics management" data-fr="Gestion logistique complète">Full-service logistics management</p>
+                            <span class="text-primary font-bold" data-en="Contact for pricing" data-fr="Contactez pour le prix">Contact for pricing</span>
+                        </div>
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h4 class="font-semibold mb-2" data-en="Enterprise Solution" data-fr="Solution Entreprise">Enterprise Solution</h4>
+                            <p class="text-gray-600 dark:text-gray-300 text-sm mb-2" data-en="Custom enterprise solutions" data-fr="Solutions d'entreprise personnalisées">Custom enterprise solutions</p>
+                            <span class="text-primary font-bold" data-en="Contact for pricing" data-fr="Contactez pour le prix">Contact for pricing</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Package Tracking Section -->
+    <section id="tracking" class="py-20 bg-white dark:bg-gray-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4" data-en="Advanced Package Tracking" data-fr="Suivi Avancé de Colis">Advanced Package Tracking</h2>
+                <p class="text-xl text-gray-600 dark:text-gray-300" data-en="Track your shipments in real-time with our interactive map" data-fr="Suivez vos expéditions en temps réel avec notre carte interactive">Track your shipments in real-time with our interactive map</p>
+            </div>
+
+            <!-- Tracking Form -->
+            <div class="bg-gray-50 dark:bg-gray-800 p-8 rounded-lg shadow-lg mb-8">
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <input 
+                        type="text" 
+                        id="trackingCode" 
+                        placeholder="Enter your tracking code..." 
+                        class="flex-1 px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:text-white"
+                        data-en-placeholder="Enter your tracking code..."
+                        data-fr-placeholder="Entrez votre code de suivi..."
+                    >
+                    <button 
+                        id="trackButton" 
+                        class="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-lg font-semibold transition-colors flex items-center"
+                        data-en="Track Package"
+                        data-fr="Suivre le Colis"
+                    >
+                        <span id="trackButtonText">Track Package</span>
+                        <div id="trackingSpinner" class="loading-spinner ml-2 hidden"></div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Error Message -->
+            <div id="trackingError" class="hidden mb-8">
+                <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-triangle text-red-500 mr-3"></i>
+                        <p class="text-red-700 dark:text-red-300" id="errorMessage"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tracking Results -->
+            <div id="trackingResults" class="hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center">
+                            <i class="fas fa-box text-3xl text-primary mr-4"></i>
+                            <div>
+                                <h3 class="text-xl font-bold" data-en="Package Details" data-fr="Détails du Colis">Package Details</h3>
+                                <p class="text-gray-600 dark:text-gray-300"><span data-en="Tracking Code:" data-fr="Code de Suivi:">Tracking Code:</span> <span id="displayTrackingCode"></span></p>
+                            </div>
+                        </div>
+                        <button 
+                            id="downloadTicket"
+                            class="bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center"
+                            data-en="Download Ticket"
+                            data-fr="Télécharger mon Ticket"
+                        >
+                            <i class="fas fa-download mr-2"></i>
+                            <span>Download Ticket</span>
+                        </button>
+                    </div>
+
+                    <!-- Status Cards -->
+                    <div class="grid md:grid-cols-4 gap-6 mb-8">
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h4 class="font-semibold mb-2" data-en="Current Status" data-fr="Statut Actuel">Current Status</h4>
+                            <div class="flex items-center">
+                                <div id="statusIndicator" class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                                <span id="packageStatus" class="font-medium">In Transit</span>
+                            </div>
+                        </div>
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h4 class="font-semibold mb-2" data-en="Carrier" data-fr="Transporteur">Carrier</h4>
+                            <span id="carrierInfo">Global Trade Express</span>
+                        </div>
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h4 class="font-semibold mb-2" data-en="Ship Date" data-fr="Date d'Expédition">Ship Date</h4>
+                            <span id="shipDate">2024-01-15</span>
+                        </div>
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h4 class="font-semibold mb-2" data-en="Estimated Delivery" data-fr="Livraison Estimée">Estimated Delivery</h4>
+                            <span id="estimatedDelivery">2024-01-22</span>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Map Section -->
+                    <div class="mb-8">
+                        <h4 class="text-lg font-semibold mb-4" data-en="Package Route" data-fr="Itinéraire du Colis">Package Route</h4>
+                        
+                        <div class="speed-controls">
+                            <button class="speed-btn active" onclick="setSpeed(0.5)" data-en="Slow" data-fr="Lent">Slow</button>
+                            <button class="speed-btn" onclick="setSpeed(1)" data-en="Normal" data-fr="Normal">Normal</button>
+                            <button class="speed-btn" onclick="setSpeed(2)" data-en="Fast" data-fr="Rapide">Fast</button>
+                        </div>
+                        
+                        <div class="map-container">
+                            <div id="interactiveMap"></div>
+                        </div>
+                        
+                        <div class="eta-info">
+                            <strong><i class="fas fa-clock mr-2"></i><span data-en="Estimated Transit Time:" data-fr="Temps de Transit Estimé:">Estimated Transit Time:</span></strong> 
+                            <span id="transitTime">7-10 business days</span>
+                        </div>
+                    </div>
+
+                    <!-- Tracking History -->
+                    <div class="timeline-container">
+                        <h4 class="text-lg font-semibold mb-4" data-en="Tracking History" data-fr="Historique de Suivi">Tracking History</h4>
+                        <div class="timeline">
+                            <div class="timeline-item">
+                                <div class="timeline-date">2024-01-15 14:00</div>
+                                <div class="timeline-status" data-en="Shipped" data-fr="Expédié">Shipped</div>
+                                <div class="timeline-location">Shanghai, China - International Sorting Center</div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-date">2024-01-16 09:00</div>
+                                <div class="timeline-status" data-en="In Transit" data-fr="En Transit">In Transit</div>
+                                <div class="timeline-location">Pacific Ocean - MSC Bellissima</div>
+                            </div>
+                            <div class="timeline-item active">
+                                <div class="timeline-date">2024-01-18 12:30</div>
+                                <div class="timeline-status" data-en="Arrived at Port" data-fr="Arrivé au Port">Arrived at Port</div>
+                                <div class="timeline-location">Los Angeles, CA - Port Terminal</div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-date" data-en="Estimated: 2024-01-19" data-fr="Estimé: 2024-01-19">Estimated: 2024-01-19</div>
+                                <div class="timeline-status" data-en="Customs Clearance" data-fr="Dédouanement">Customs Clearance</div>
+                                <div class="timeline-location">Los Angeles, CA - Customs Office</div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-date" data-en="Estimated: 2024-01-20" data-fr="Estimé: 2024-01-20">Estimated: 2024-01-20</div>
+                                <div class="timeline-status" data-en="Ground Transport" data-fr="Transport Terrestre">Ground Transport</div>
+                                <div class="timeline-location">Denver, CO - Distribution Center</div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-date" data-en="Estimated: 2024-01-22" data-fr="Estimé: 2024-01-22">Estimated: 2024-01-22</div>
+                                <div class="timeline-status" data-en="Final Delivery" data-fr="Livraison Finale">Final Delivery</div>
+                                <div class="timeline-location">Chicago, IL - Destination Address</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sample Tracking Code -->
+            <div class="text-center mt-8">
+                <p class="text-sm text-gray-600 dark:text-gray-400" data-en="Try sample code: GT2024001234" data-fr="Essayez le code d'exemple: GT2024001234">Try sample code: GT2024001234</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section id="testimonials" class="py-20 bg-gray-50 dark:bg-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4" data-en="Client Testimonials" data-fr="Témoignages Clients">Client Testimonials</h2>
+                <p class="text-xl text-gray-600 dark:text-gray-300" data-en="What our clients say about our services" data-fr="Ce que nos clients disent de nos services">What our clients say about our services</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8 mb-16">
+                <!-- Testimonial 1 -->
+                <div class="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white font-bold mr-4">JD</div>
+                        <div>
+                            <h4 class="font-semibold">John Davis</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">CEO, TechCorp</p>
+                        </div>
+                    </div>
+                    <div class="text-yellow-400 mb-4">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-300" data-en="Global Trade Solutions transformed our supply chain. Their expertise and reliability have been invaluable to our international expansion." data-fr="Global Trade Solutions a transformé notre chaîne d'approvisionnement. Leur expertise et leur fiabilité ont été inestimables pour notre expansion internationale.">"Global Trade Solutions transformed our supply chain. Their expertise and reliability have been invaluable to our international expansion."</p>
+                </div>
+
+                <!-- Testimonial 2 -->
+                <div class="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white font-bold mr-4">ML</div>
+                        <div>
+                            <h4 class="font-semibold">Maria Lopez</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Director, Fashion Forward</p>
+                        </div>
+                    </div>
+                    <div class="text-yellow-400 mb-4">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-300" data-en="Outstanding service! They handled our complex textile imports seamlessly, saving us time and money while ensuring compliance." data-fr="Service exceptionnel ! Ils ont géré nos importations textiles complexes de manière transparente, nous faisant économiser du temps et de l'argent tout en garantissant la conformité.">"Outstanding service! They handled our complex textile imports seamlessly, saving us time and money while ensuring compliance."</p>
+                </div>
+
+                <!-- Testimonial 3 -->
+                <div class="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white font-bold mr-4">RC</div>
+                        <div>
+                            <h4 class="font-semibold">Robert Chen</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Manager, Global Electronics</p>
+                        </div>
+                    </div>
+                    <div class="text-yellow-400 mb-4">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-300" data-en="Their tracking system is fantastic! Real-time updates and excellent customer support make them our preferred logistics partner." data-fr="Leur système de suivi est fantastique ! Les mises à jour en temps réel et l'excellent support client en font notre partenaire logistique préféré.">"Their tracking system is fantastic! Real-time updates and excellent customer support make them our preferred logistics partner."</p>
+                </div>
+            </div>
+
+            <!-- Case Studies -->
+            <div class="text-center">
+                <h3 class="text-2xl font-bold mb-8" data-en="Success Stories" data-fr="Histoires de Succès">Success Stories</h3>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-lg text-left">
+                        <h4 class="font-semibold mb-3" data-en="Case Study: European Expansion" data-fr="Étude de Cas: Expansion Européenne">Case Study: European Expansion</h4>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4" data-en="Helped TechCorp expand to 15 European markets, reducing logistics costs by 30% while improving delivery times." data-fr="Aidé TechCorp à s'étendre sur 15 marchés européens, réduisant les coûts logistiques de 30% tout en améliorant les délais de livraison.">Helped TechCorp expand to 15 European markets, reducing logistics costs by 30% while improving delivery times.</p>
+                        <div class="text-sm text-primary font-semibold" data-en="30% Cost Reduction • 15 New Markets" data-fr="30% de Réduction de Coûts • 15 Nouveaux Marchés">30% Cost Reduction • 15 New Markets</div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-lg text-left">
+                        <h4 class="font-semibold mb-3" data-en="Case Study: Supply Chain Optimization" data-fr="Étude de Cas: Optimisation de la Chaîne d'Approvisionnement">Case Study: Supply Chain Optimization</h4>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4" data-en="Streamlined Fashion Forward's global supply chain, resulting in 40% faster delivery and improved inventory management." data-fr="Rationalisé la chaîne d'approvisionnement mondiale de Fashion Forward, résultant en une livraison 40% plus rapide et une meilleure gestion des stocks.">Streamlined Fashion Forward's global supply chain, resulting in 40% faster delivery and improved inventory management.</p>
+                        <div class="text-sm text-primary font-semibold" data-en="40% Faster Delivery • Improved Efficiency" data-fr="40% de Livraison Plus Rapide • Efficacité Améliorée">40% Faster Delivery • Improved Efficiency</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="py-20 bg-white dark:bg-gray-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4" data-en="Contact Us" data-fr="Contactez-Nous">Contact Us</h2>
+                <p class="text-xl text-gray-600 dark:text-gray-300" data-en="Get in touch for a consultation or quote" data-fr="Contactez-nous pour une consultation ou un devis">Get in touch for a consultation or quote</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-12">
+                <!-- Contact Form -->
+                <div>
+                    <h3 class="text-xl font-bold mb-6" data-en="Send us a message" data-fr="Envoyez-nous un message">Send us a message</h3>
+                    <form id="contactForm" class="space-y-6">
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            <input 
+                                type="text" 
+                                placeholder="First Name" 
+                                class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-800 dark:text-white"
+                                data-en-placeholder="First Name"
+                                data-fr-placeholder="Prénom"
+                            >
+                            <input 
+                                type="text" 
+                                placeholder="Last Name" 
+                                class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-800 dark:text-white"
+                                data-en-placeholder="Last Name"
+                                data-fr-placeholder="Nom"
+                            >
+                        </div>
+                        <input 
+                            type="email" 
+                            placeholder="Email Address" 
+                            class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-800 dark:text-white"
+                            data-en-placeholder="Email Address"
+                            data-fr-placeholder="Adresse Email"
+                        >
+                        <input 
+                            type="tel" 
+                            placeholder="Phone Number" 
+                            class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-800 dark:text-white"
+                            data-en-placeholder="Phone Number"
+                            data-fr-placeholder="Numéro de Téléphone"
+                        >
+                        <select class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-800 dark:text-white">
+                            <option data-en="Select Service" data-fr="Sélectionner le Service">Select Service</option>
+                            <option data-en="Import Services" data-fr="Services d'Importation">Import Services</option>
+                            <option data-en="Export Solutions" data-fr="Solutions d'Exportation">Export Solutions</option>
+                            <option data-en="Logistics Management" data-fr="Gestion Logistique">Logistics Management</option>
+                            <option data-en="Customs Clearance" data-fr="Dédouanement">Customs Clearance</option>
+                        </select>
+                        <textarea 
+                            rows="5" 
+                            placeholder="Your Message" 
+                            class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-800 dark:text-white"
+                            data-en-placeholder="Your Message"
+                            data-fr-placeholder="Votre Message"
+                        ></textarea>
+                        <button 
+                            type="submit" 
+                            class="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-semibold transition-colors"
+                            data-en="Send Message"
+                            data-fr="Envoyer le Message"
+                        >Send Message</button>
+                    </form>
+                </div>
+
+                <!-- Contact Information -->
+                <div>
+                    <h3 class="text-xl font-bold mb-6" data-en="Contact Information" data-fr="Informations de Contact">Contact Information</h3>
+                    <div class="space-y-6">
+                        <div class="flex items-start">
+                            <i class="fas fa-map-marker-alt text-2xl text-primary mr-4 mt-1"></i>
+                            <div>
+                                <h4 class="font-semibold mb-1" data-en="Address" data-fr="Adresse">Address</h4>
+                                <p class="text-gray-600 dark:text-gray-300">
+                                    123 Trade Center Blvd<br>
+                                    International Business District<br>
+                                    New York, NY 10001, USA
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-phone text-2xl text-primary mr-4 mt-1"></i>
+                            <div>
+                                <h4 class="font-semibold mb-1" data-en="Phone" data-fr="Téléphone">Phone</h4>
+                                <p class="text-gray-600 dark:text-gray-300">+1 (555) 123-4567</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-envelope text-2xl text-primary mr-4 mt-1"></i>
+                            <div>
+                                <h4 class="font-semibold mb-1" data-en="Email" data-fr="Email">Email</h4>
+                                <p class="text-gray-600 dark:text-gray-300">info@globaltradesolutions.com</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-clock text-2xl text-primary mr-4 mt-1"></i>
+                            <div>
+                                <h4 class="font-semibold mb-1" data-en="Business Hours" data-fr="Heures d'Ouverture">Business Hours</h4>
+                                <p class="text-gray-600 dark:text-gray-300">
+                                    <span data-en="Monday - Friday: 9:00 AM - 6:00 PM" data-fr="Lundi - Vendredi: 9h00 - 18h00">Monday - Friday: 9:00 AM - 6:00 PM</span><br>
+                                    <span data-en="Saturday: 9:00 AM - 2:00 PM" data-fr="Samedi: 9h00 - 14h00">Saturday: 9:00 AM - 2:00 PM</span><br>
+                                    <span data-en="Sunday: Closed" data-fr="Dimanche: Fermé">Sunday: Closed</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Map Placeholder -->
+                    <div class="mt-8">
+                        <h4 class="font-semibold mb-4" data-en="Find Us" data-fr="Nous Trouver">Find Us</h4>
+                        <div class="bg-gray-200 dark:bg-gray-700 h-64 rounded-lg flex items-center justify-center">
+                            <div class="text-center">
+                                <i class="fas fa-map-marked-alt text-4xl text-primary mb-2"></i>
+                                <p class="text-gray-600 dark:text-gray-300" data-en="Interactive Map" data-fr="Carte Interactive">Interactive Map</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400" data-en="123 Trade Center Blvd, NY" data-fr="123 Trade Center Blvd, NY">123 Trade Center Blvd, NY</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Blog Section -->
+    <section id="blog" class="py-20 bg-gray-50 dark:bg-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4" data-en="Latest News & Insights" data-fr="Dernières Nouvelles et Perspectives">Latest News & Insights</h2>
+                <p class="text-xl text-gray-600 dark:text-gray-300" data-en="Stay updated with the latest trends in international trade" data-fr="Restez informé des dernières tendances du commerce international">Stay updated with the latest trends in international trade</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Blog Post 1 -->
+                <article class="bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-hidden">
+                    <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-48 flex items-center justify-center">
+                        <i class="fas fa-chart-line text-4xl text-white"></i>
+                    </div>
+                    <div class="p-6">
+                        <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">January 15, 2024</div>
+                        <h3 class="text-xl font-bold mb-3" data-en="Global Trade Trends 2024" data-fr="Tendances du Global Trade 2024">Global Trade Trends 2024</h3>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4" data-en="Discover the emerging trends shaping international trade in 2024, from digital transformation to sustainable logistics." data-fr="Découvrez les tendances émergentes qui façonnent le commerce international en 2024, de la transformation numérique à la logistique durable.">Discover the emerging trends shaping international trade in 2024, from digital transformation to sustainable logistics.</p>
+                        <button class="text-primary font-semibold hover:underline blog-read-more" data-en="Read More" data-fr="Lire Plus" data-article="trade-trends">Read More</button>
+                    </div>
+                </article>
+
+                <!-- Blog Post 2 -->
+                <article class="bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-hidden">
+                    <div class="bg-gradient-to-r from-green-500 to-emerald-600 h-48 flex items-center justify-center">
+                        <i class="fas fa-leaf text-4xl text-white"></i>
+                    </div>
+                    <div class="p-6">
+                        <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">January 10, 2024</div>
+                        <h3 class="text-xl font-bold mb-3" data-en="Sustainable Supply Chains" data-fr="Chaînes d'Approvisionnement Durables">Sustainable Supply Chains</h3>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4" data-en="Learn how to build environmentally responsible supply chains that reduce costs and improve efficiency." data-fr="Apprenez à construire des chaînes d'approvisionnement respectueuses de l'environnement qui réduisent les coûts et améliorent l'efficacité.">Learn how to build environmentally responsible supply chains that reduce costs and improve efficiency.</p>
+                        <button class="text-primary font-semibold hover:underline blog-read-more" data-en="Read More" data-fr="Lire Plus" data-article="sustainable-supply">Read More</button>
+                    </div>
+                </article>
+
+                <!-- Blog Post 3 -->
+                <article class="bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-hidden">
+                    <div class="bg-gradient-to-r from-purple-500 to-pink-600 h-48 flex items-center justify-center">
+                        <i class="fas fa-shield-alt text-4xl text-white"></i>
+                    </div>
+                    <div class="p-6">
+                        <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">January 5, 2024</div>
+                        <h3 class="text-xl font-bold mb-3" data-en="Customs Compliance Guide" data-fr="Guide de Conformité Douanière">Customs Compliance Guide</h3>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4" data-en="Essential tips for maintaining customs compliance and avoiding costly delays in your international shipments." data-fr="Conseils essentiels pour maintenir la conformité douanière et éviter les retards coûteux dans vos expéditions internationales.">Essential tips for maintaining customs compliance and avoiding costly delays in your international shipments.</p>
+                        <button class="text-primary font-semibold hover:underline blog-read-more" data-en="Read More" data-fr="Lire Plus" data-article="customs-compliance">Read More</button>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Tips Section -->
+            <div class="mt-16">
+                <h3 class="text-2xl font-bold text-center mb-8" data-en="Quick Tips for Importers & Exporters" data-fr="Conseils Rapides pour Importateurs et Exportateurs">Quick Tips for Importers & Exporters</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <i class="fas fa-file-alt text-3xl text-primary mb-3"></i>
+                        <h4 class="font-semibold mb-2" data-en="Documentation" data-fr="Documentation">Documentation</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-300" data-en="Always prepare complete paperwork" data-fr="Toujours préparer une documentation complète">Always prepare complete paperwork</p>
+                    </div>
+                    <div class="text-center">
+                        <i class="fas fa-balance-scale text-3xl text-primary mb-3"></i>
+                        <h4 class="font-semibold mb-2" data-en="Compliance" data-fr="Conformité">Compliance</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-300" data-en="Stay updated with regulations" data-fr="Restez à jour avec les réglementations">Stay updated with regulations</p>
+                    </div>
+                    <div class="text-center">
+                        <i class="fas fa-clock text-3xl text-primary mb-3"></i>
+                        <h4 class="font-semibold mb-2" data-en="Timing" data-fr="Timing">Timing</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-300" data-en="Plan for customs delays" data-fr="Prévoyez les retards douaniers">Plan for customs delays</p>
+                    </div>
+                    <div class="text-center">
+                        <i class="fas fa-handshake text-3xl text-primary mb-3"></i>
+                        <h4 class="font-semibold mb-2" data-en="Partnership" data-fr="Partenariat">Partnership</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-300" data-en="Choose reliable partners" data-fr="Choisissez des partenaires fiables">Choose reliable partners</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Blog Article Modal -->
+    <div id="blogModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="modalTitle" class="text-2xl font-bold"></h2>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="modalContent" class="prose dark:prose-invert max-w-none">
+                <!-- Article content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-4 gap-8 mb-8">
+                <!-- Company Info -->
+                <div>
+                    <div class="flex items-center mb-4">
+                        <i class="fas fa-globe text-2xl text-primary mr-3"></i>
+                        <span class="font-bold text-xl">Global Trade Solutions</span>
+                    </div>
+                    <p class="text-gray-300 mb-4" data-en="Your trusted partner for international trade excellence. Connecting businesses worldwide since 2003." data-fr="Votre partenaire de confiance pour l'excellence du commerce international. Connecter les entreprises du monde entier depuis 2003.">Your trusted partner for international trade excellence. Connecting businesses worldwide since 2003.</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-300 hover:text-primary"><i class="fab fa-facebook"></i></a>
+                        <a href="#" class="text-gray-300 hover:text-primary"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-gray-300 hover:text-primary"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" class="text-gray-300 hover:text-primary"><i class="fab fa-instagram"></i></a>
+                    </div>
+                </div>
+
+                <!-- Services -->
+                <div>
+                    <h4 class="font-semibold mb-4" data-en="Services" data-fr="Services">Services</h4>
+                    <ul class="space-y-2 text-gray-300">
+                        <li><a href="#" class="hover:text-primary" data-en="Import Services" data-fr="Services d'Importation">Import Services</a></li>
+                        <li><a href="#" class="hover:text-primary" data-en="Export Solutions" data-fr="Solutions d'Exportation">Export Solutions</a></li>
+                        <li><a href="#" class="hover:text-primary" data-en="Logistics Management" data-fr="Gestion Logistique">Logistics Management</a></li>
+                        <li><a href="#" class="hover:text-primary" data-en="Customs Clearance" data-fr="Dédouanement">Customs Clearance</a></li>
+                    </ul>
+                </div>
+
+                <!-- Quick Links -->
+                <div>
+                    <h4 class="font-semibold mb-4" data-en="Quick Links" data-fr="Liens Rapides">Quick Links</h4>
+                    <ul class="space-y-2 text-gray-300">
+                        <li><a href="#about" class="hover:text-primary" data-en="About Us" data-fr="À Propos">About Us</a></li>
+                        <li><a href="#tracking" class="hover:text-primary" data-en="Track Package" data-fr="Suivre un Colis">Track Package</a></li>
+                        <li><a href="#contact" class="hover:text-primary" data-en="Contact" data-fr="Contact">Contact</a></li>
+                        <li><a href="#blog" class="hover:text-primary" data-en="Blog" data-fr="Blog">Blog</a></li>
+                    </ul>
+                </div>
+
+                <!-- Contact -->
+                <div>
+                    <h4 class="font-semibold mb-4" data-en="Contact Info" data-fr="Informations de Contact">Contact Info</h4>
+                    <div class="space-y-2 text-gray-300">
+                        <p><i class="fas fa-phone mr-2"></i>+1 (555) 123-4567</p>
+                        <p><i class="fas fa-envelope mr-2"></i>info@globaltradesolutions.com</p>
+                        <p><i class="fas fa-map-marker-alt mr-2"></i>123 Trade Center Blvd, NY</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-700 pt-8 text-center text-gray-300">
+                <p>&copy; 2024 Global Trade Solutions. <span data-en="All rights reserved." data-fr="Tous droits réservés.">All rights reserved.</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Dark Mode Implementation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for saved theme preference or use system preference
+            const savedTheme = localStorage.getItem('theme');
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+                document.documentElement.classList.add('dark');
+            }
+            
+            // Set up theme toggle
+            document.getElementById('darkToggle').addEventListener('click', function() {
+                document.documentElement.classList.toggle('dark');
+                const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+                localStorage.setItem('theme', theme);
+            });
+            
+            // Listen for system theme changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (!localStorage.getItem('theme')) {
+                    if (event.matches) {
+                        document.documentElement.classList.add('dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                    }
+                }
+            });
+        });
+
+        // Language System
+        let currentLang = 'en';
+
+        function updateLanguage() {
+            document.querySelectorAll('[data-en]').forEach(element => {
+                const enText = element.getAttribute('data-en');
+                const frText = element.getAttribute('data-fr');
+                
+                if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                    const placeholderKey = currentLang === 'en' ? 'data-en-placeholder' : 'data-fr-placeholder';
+                    const placeholder = element.getAttribute(placeholderKey);
+                    if (placeholder) element.placeholder = placeholder;
+                } else if (element.tagName === 'OPTION') {
+                    element.textContent = currentLang === 'en' ? enText : frText;
+                } else {
+                    element.textContent = currentLang === 'en' ? enText : frText;
+                }
+            });
+            
+            // Update language toggle button
+            document.getElementById('langToggle').textContent = currentLang.toUpperCase();
+        }
+
+        function switchLanguage(lang) {
+            currentLang = lang;
+            updateLanguage();
+        }
+
+        // Blog Articles Content
+        const blogArticles = {
+            'trade-trends': {
+                en: {
+                    title: 'Global Trade Trends 2024',
+                    content: `
+                        <h3>The Future of International Trade</h3>
+                        <p>As we navigate through 2024, the landscape of international trade continues to evolve at an unprecedented pace. Digital transformation, sustainability initiatives, and changing consumer demands are reshaping how businesses approach global commerce.</p>
+                        
+                        <h4>Key Trends Shaping 2024</h4>
+                        <ul>
+                            <li><strong>Digital Supply Chain Integration:</strong> Advanced technologies like AI and blockchain are revolutionizing supply chain visibility and efficiency.</li>
+                            <li><strong>Sustainable Logistics:</strong> Environmental consciousness is driving demand for eco-friendly shipping solutions and carbon-neutral logistics.</li>
+                            <li><strong>Nearshoring and Regionalization:</strong> Companies are bringing supply chains closer to home to reduce risks and improve resilience.</li>
+                            <li><strong>E-commerce Growth:</strong> The continued expansion of online retail is creating new opportunities and challenges for international trade.</li>
+                        </ul>
+                        
+                        <h4>Preparing for the Future</h4>
+                        <p>Businesses that adapt to these trends will gain competitive advantages. At Global Trade Solutions, we help companies navigate these changes with expert guidance and innovative solutions.</p>
+                    `
+                },
+                fr: {
+                    title: 'Tendances du Global Trade 2024',
+                    content: `
+                        <h3>L'Avenir du Commerce International</h3>
+                        <p>Alors que nous naviguons en 2024, le paysage du commerce international continue d'évoluer à un rythme sans précédent. La transformation numérique, les initiatives de durabilité et l'évolution des demandes des consommateurs redéfinissent la façon dont les entreprises abordent le commerce mondial.</p>
+                        
+                        <h4>Tendances Clés qui Façonnent 2024</h4>
+                        <ul>
+                            <li><strong>Intégration Numérique de la Chaîne d'Approvisionnement:</strong> Les technologies avancées comme l'IA et la blockchain révolutionnent la visibilité et l'efficacité de la chaîne d'approvisionnement.</li>
+                            <li><strong>Logistique Durable:</strong> La conscience environnementale stimule la demande de solutions de transport écologiques et de logistique neutre en carbone.</li>
+                            <li><strong>Délocalisation de Proximité et Régionalisation:</strong> Les entreprises rapprochent leurs chaînes d'approvisionnement pour réduire les risques et améliorer la résilience.</li>
+                            <li><strong>Croissance du Commerce Électronique:</strong> L'expansion continue du commerce de détail en ligne crée de nouvelles opportunités et défis pour le commerce international.</li>
+                        </ul>
+                        
+                        <h4>Se Préparer pour l'Avenir</h4>
+                        <p>Les entreprises qui s'adaptent à ces tendances obtiendront des avantages concurrentiels. Chez Global Trade Solutions, nous aidons les entreprises à naviguer dans ces changements avec des conseils d'experts et des solutions innovantes.</p>
+                    `
+                }
+            },
+            'sustainable-supply': {
+                en: {
+                    title: 'Sustainable Supply Chains',
+                    content: `
+                        <h3>Building Environmentally Responsible Supply Chains</h3>
+                        <p>Sustainability is no longer just a buzzword—it's a business imperative. Companies worldwide are recognizing that environmentally responsible supply chains not only benefit the planet but also improve operational efficiency and reduce costs.</p>
+                        
+                        <h4>Benefits of Sustainable Supply Chains</h4>
+                        <ul>
+                            <li><strong>Cost Reduction:</strong> Efficient resource use and waste reduction lead to significant cost savings.</li>
+                            <li><strong>Risk Mitigation:</strong> Sustainable practices reduce exposure to environmental and regulatory risks.</li>
+                            <li><strong>Brand Enhancement:</strong> Consumers increasingly prefer companies with strong environmental commitments.</li>
+                            <li><strong>Regulatory Compliance:</strong> Stay ahead of evolving environmental regulations.</li>
+                        </ul>
+                        
+                        <h4>Implementation Strategies</h4>
+                        <p>Our experts help companies implement sustainable practices through carrier optimization, route planning, and green technology adoption. Contact us to learn how we can make your supply chain more sustainable and efficient.</p>
+                    `
+                },
+                fr: {
+                    title: 'Chaînes d\'Approvisionnement Durables',
+                    content: `
+                        <h3>Construire des Chaînes d'Approvisionnement Écologiquement Responsables</h3>
+                        <p>La durabilité n'est plus seulement un mot à la mode—c'est un impératif commercial. Les entreprises du monde entier reconnaissent que les chaînes d'approvisionnement écologiquement responsables profitent non seulement à la planète, mais améliorent également l'efficacité opérationnelle et réduisent les coûts.</p>
+                        
+                        <h4>Avantages des Chaînes d'Approvisionnement Durables</h4>
+                        <ul>
+                            <li><strong>Réduction des Coûts:</strong> L'utilisation efficace des ressources et la réduction des déchets entraînent des économies significatives.</li>
+                            <li><strong>Atténuation des Risques:</strong> Les pratiques durables réduisent l'exposition aux risques environnementaux et réglementaires.</li>
+                            <li><strong>Amélioration de la Marque:</strong> Les consommateurs préfèrent de plus en plus les entreprises avec de forts engagements environnementaux.</li>
+                            <li><strong>Conformité Réglementaire:</strong> Devancez l'évolution des réglementations environnementales.</li>
+                        </ul>
+                        
+                        <h4>Stratégies de Mise en Œuvre</h4>
+                        <p>Nos experts aident les entreprises à implémenter des pratiques durables grâce à l'optimisation des transporteurs, la planification d'itinéraires et l'adoption de technologies vertes. Contactez-nous pour apprendre comment nous pouvons rendre votre chaîne d'approvisionnement plus durable et efficace.</p>
+                    `
+                }
+            },
+            'customs-compliance': {
+                en: {
+                    title: 'Customs Compliance Guide',
+                    content: `
+                        <h3>Essential Tips for Customs Compliance</h3>
+                        <p>Navigating customs regulations can be complex, but proper compliance is crucial for avoiding delays, penalties, and additional costs. Our comprehensive guide helps you understand the key elements of successful customs compliance.</p>
+                        
+                        <h4>Critical Compliance Areas</h4>
+                        <ul>
+                            <li><strong>Documentation Accuracy:</strong> Ensure all paperwork is complete, accurate, and properly formatted.</li>
+                            <li><strong>Classification Codes:</strong> Use correct HS codes for all products to ensure proper duty calculation.</li>
+                            <li><strong>Valuation Rules:</strong> Understand valuation methods and ensure accurate declared values.</li>
+                            <li><strong>Origin Certification:</strong> Properly document country of origin for preferential trade agreements.</li>
+                        </ul>
+                        
+                        <h4>Best Practices</h4>
+                        <p>Regular training, automated compliance systems, and working with experienced customs brokers are essential. Global Trade Solutions provides comprehensive customs support to ensure your shipments clear smoothly and efficiently.</p>
+                    `
+                },
+                fr: {
+                    title: 'Guide de Conformité Douanière',
+                    content: `
+                        <h3>Conseils Essentiels pour la Conformité Douanière</h3>
+                        <p>Naviguer dans les réglementations douanières peut être complexe, mais une conformité appropriée est cruciale pour éviter les retards, les pénalités et les coûts supplémentaires. Notre guide complet vous aide à comprendre les éléments clés d'une conformité douanière réussie.</p>
+                        
+                        <h4>Domaines de Conformité Critiques</h4>
+                        <ul>
+                            <li><strong>Précision de la Documentation:</strong> Assurez-vous que tous les documents sont complets, précis et correctement formatés.</li>
+                            <li><strong>Codes de Classification:</strong> Utilisez les codes SH corrects pour tous les produits pour assurer un calcul correct des droits.</li>
+                            <li><strong>Règles d'Évaluation:</strong> Comprenez les méthodes d'évaluation et assurez-vous de valeurs déclarées précises.</li>
+                            <li><strong>Certification d'Origine:</strong> Documentez correctement le pays d'origine pour les accords commerciaux préférentiels.</li>
+                        </ul>
+                        
+                        <h4>Meilleures Pratiques</h4>
+                        <p>La formation régulière, les systèmes de conformité automatisés et le travail avec des courtiers en douane expérimentés sont essentiels. Global Trade Solutions fournit un support douanier complet pour s'assurer que vos expéditions passent en douane facilement et efficacement.</p>
+                    `
+                }
+            }
+        };
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize language
+            updateLanguage();
+
+            // Language toggle
+            document.getElementById('langToggle').addEventListener('click', function() {
+                switchLanguage(currentLang === 'en' ? 'fr' : 'en');
+            });
+
+            // Mobile menu toggle
+            document.getElementById('mobileMenu').addEventListener('click', function() {
+                document.getElementById('mobileNav').classList.toggle('hidden');
+            });
+
+            // Smooth scrolling for navigation links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                        // Close mobile menu if open
+                        document.getElementById('mobileNav').classList.add('hidden');
+                    }
+                });
+            });
+
+            // Package tracking functionality
+            document.getElementById('trackButton').addEventListener('click', function() {
+                const trackingCode = document.getElementById('trackingCode').value.trim();
+                if (trackingCode) {
+                    trackPackage(trackingCode);
+                } else {
+                    showErrorMessage(currentLang === 'en' ? 'Please enter a tracking code' : 'Veuillez entrer un code de suivi');
+                }
+            });
+
+            // Hero tracking functionality
+            document.getElementById('heroTrackButton').addEventListener('click', function() {
+                const trackingCode = document.getElementById('heroTrackingCode').value.trim();
+                if (trackingCode) {
+                    // Scroll to tracking section and track
+                    document.getElementById('tracking').scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    setTimeout(() => {
+                        document.getElementById('trackingCode').value = trackingCode;
+                        trackPackage(trackingCode);
+                    }, 1000);
+                } else {
+                    showCustomAlert(currentLang === 'en' ? 'Please enter a tracking code' : 'Veuillez entrer un code de suivi');
+                }
+            });
+
+            // Contact form submission
+            document.getElementById('contactForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                showCustomAlert(currentLang === 'en' ? 'Thank you for your message! We will contact you soon.' : 'Merci pour votre message ! Nous vous contacterons bientôt.');
+            });
+
+            // Blog read more buttons
+            document.querySelectorAll('.blog-read-more').forEach(button => {
+                button.addEventListener('click', function() {
+                    const articleId = this.getAttribute('data-article');
+                    showBlogArticle(articleId);
+                });
+            });
+
+            // Blog modal close
+            document.getElementById('closeModal').addEventListener('click', function() {
+                document.getElementById('blogModal').classList.add('hidden');
+            });
+
+            // Download ticket functionality
+            document.addEventListener('click', function(e) {
+                if (e.target.id === 'downloadTicket' || e.target.closest('#downloadTicket')) {
+                    downloadTrackingTicket();
+                }
+            });
+        });
+
+        // Custom alert function
+        function showCustomAlert(message) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-sm w-full mx-4">
+                    <p class="text-gray-700 dark:text-gray-300 mb-4">${message}</p>
+                    <div class="flex justify-end">
+                        <button class="px-4 py-2 bg-primary text-white hover:bg-primary/90 rounded" onclick="this.closest('.fixed').remove()">OK</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Show error message
+        function showErrorMessage(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('trackingError').classList.remove('hidden');
+            document.getElementById('trackingResults').classList.add('hidden');
+        }
+
+        // Hide error message
+        function hideErrorMessage() {
+            document.getElementById('trackingError').classList.add('hidden');
+        }
+
+        // Show loading state
+        function showLoadingState() {
+            const button = document.getElementById('trackButton');
+            const spinner = document.getElementById('trackingSpinner');
+            const buttonText = document.getElementById('trackButtonText');
+            
+            if (button && spinner && buttonText) {
+                button.disabled = true;
+                spinner.classList.remove('hidden');
+                buttonText.textContent = currentLang === 'en' ? 'Tracking...' : 'Suivi...';
+            }
+        }
+
+        // Hide loading state
+        function hideLoadingState() {
+            const button = document.getElementById('trackButton');
+            const spinner = document.getElementById('trackingSpinner');
+            const buttonText = document.getElementById('trackButtonText');
+            
+            if (button && spinner && buttonText) {
+                button.disabled = false;
+                spinner.classList.add('hidden');
+                buttonText.textContent = currentLang === 'en' ? 'Track Package' : 'Suivre le Colis';
+            }
+        }
+
+        // Package tracking function
+        function trackPackage(code) {
+            hideErrorMessage();
+            showLoadingState();
+
+            // Simulate loading time
+            setTimeout(() => {
+                // Simulate tracking data
+                const trackingData = {
+                    'GT2024001234': {
+                        status: currentLang === 'en' ? 'In Transit' : 'En Transit',
+                        statusColor: 'green',
+                        carrier: 'Global Trade Express',
+                        shipDate: '2024-01-15',
+                        estimatedDelivery: '2024-01-22',
+                        history: [
+                            { 
+                                date: '2024-01-20 14:30', 
+                                location: 'Chicago Distribution Center', 
+                                status: currentLang === 'en' ? 'Out for delivery' : 'En cours de livraison', 
+                                description: currentLang === 'en' ? 'Package is out for delivery' : 'Le colis est en cours de livraison' 
+                            },
+                            { 
+                                date: '2024-01-20 08:15', 
+                                location: 'Chicago Distribution Center', 
+                                status: currentLang === 'en' ? 'Arrived at facility' : 'Arrivé à l\'installation', 
+                                description: currentLang === 'en' ? 'Package arrived at distribution center' : 'Le colis est arrivé au centre de distribution' 
+                            },
+                            { 
+                                date: '2024-01-19 16:45', 
+                                location: 'Denver Transit Hub', 
+                                status: currentLang === 'en' ? 'In transit' : 'En transit', 
+                                description: currentLang === 'en' ? 'Package departed facility' : 'Le colis a quitté l\'installation' 
+                            },
+                            { 
+                                date: '2024-01-18 12:30', 
+                                location: 'Los Angeles Port', 
+                                status: currentLang === 'en' ? 'Customs cleared' : 'Dédouané', 
+                                description: currentLang === 'en' ? 'Customs clearance completed' : 'Dédouanement terminé' 
+                            },
+                            { 
+                                date: '2024-01-16 09:00', 
+                                location: 'Los Angeles Port', 
+                                status: currentLang === 'en' ? 'Arrived at port' : 'Arrivé au port', 
+                                description: currentLang === 'en' ? 'Package arrived at destination port' : 'Le colis est arrivé au port de destination' 
+                            },
+                            { 
+                                date: '2024-01-15 14:00', 
+                                location: 'Shanghai Port', 
+                                status: currentLang === 'en' ? 'Shipped' : 'Expédié', 
+                                description: currentLang === 'en' ? 'Package shipped from origin' : 'Colis expédié depuis l\'origine' 
+                            }
+                        ]
+                    }
+                };
+
+                hideLoadingState();
+
+                const data = trackingData[code];
+                if (data) {
+                    displayTrackingResults(code, data);
+                    initInteractiveMap();
+                } else {
+                    showErrorMessage(currentLang === 'en' 
+                        ? 'Tracking code not found. Please try GT2024001234 for demo.' 
+                        : 'Code de suivi introuvable. Essayez GT2024001234 pour la démo.');
+                }
+            }, 1500);
+        }
+
+        function displayTrackingResults(code, data) {
+            document.getElementById('displayTrackingCode').textContent = code;
+            document.getElementById('packageStatus').textContent = data.status;
+            document.getElementById('statusIndicator').className = `w-3 h-3 rounded-full bg-${data.statusColor}-500 mr-2`;
+            document.getElementById('carrierInfo').textContent = data.carrier;
+            document.getElementById('shipDate').textContent = data.shipDate;
+            document.getElementById('estimatedDelivery').textContent = data.estimatedDelivery;
+
+            // Display tracking history
+            const historyContainer = document.getElementById('trackingHistory');
+            if (historyContainer) {
+                historyContainer.innerHTML = '';
+                
+                data.history.forEach((item, index) => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'flex items-start border-l-2 border-primary pl-4 pb-4 relative';
+                    
+                    if (index === 0) {
+                        historyItem.innerHTML = `
+                            <div class="absolute -left-2 w-4 h-4 bg-primary rounded-full"></div>
+                            <div class="flex-1">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h5 class="font-semibold">${item.status}</h5>
+                                    <span class="text-sm text-gray-500 dark:text-gray-400">${item.date}</span>
+                                </div>
+                                <p class="text-gray-600 dark:text-gray-300 text-sm mb-1">${item.description}</p>
+                                <p class="text-gray-500 dark:text-gray-400 text-xs">${item.location}</p>
+                            </div>
+                        `;
+                    } else {
+                        historyItem.innerHTML = `
+                            <div class="absolute -left-1.5 w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+                            <div class="flex-1">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h5 class="font-medium text-gray-700 dark:text-gray-300">${item.status}</h5>
+                                    <span class="text-sm text-gray-500 dark:text-gray-400">${item.date}</span>
+                                </div>
+                                <p class="text-gray-600 dark:text-gray-300 text-sm mb-1">${item.description}</p>
+                                <p class="text-gray-500 dark:text-gray-400 text-xs">${item.location}</p>
+                            </div>
+                        `;
+                    }
+                    
+                    historyContainer.appendChild(historyItem);
+                });
+            }
+
+            document.getElementById('trackingResults').classList.remove('hidden');
+        }
+
+        function showBlogArticle(articleId) {
+            const article = blogArticles[articleId];
+            if (article) {
+                const content = article[currentLang];
+                document.getElementById('modalTitle').textContent = content.title;
+                document.getElementById('modalContent').innerHTML = content.content;
+                document.getElementById('blogModal').classList.remove('hidden');
+            }
+        }
+
+        function downloadTrackingTicket() {
+            const trackingCode = document.getElementById('displayTrackingCode').textContent;
+            const packageStatus = document.getElementById('packageStatus').textContent;
+            const carrierInfo = document.getElementById('carrierInfo').textContent;
+            const shipDate = document.getElementById('shipDate').textContent;
+            const estimatedDelivery = document.getElementById('estimatedDelivery').textContent;
+
+            const ticketContent = `
+GLOBAL TRADE SOLUTIONS
+${currentLang === 'en' ? 'TRACKING TICKET' : 'TICKET DE SUIVI'}
+========================
+
+${currentLang === 'en' ? 'Tracking Code:' : 'Code de Suivi:'} ${trackingCode}
+${currentLang === 'en' ? 'Status:' : 'Statut:'} ${packageStatus}
+${currentLang === 'en' ? 'Carrier:' : 'Transporteur:'} ${carrierInfo}
+${currentLang === 'en' ? 'Ship Date:' : 'Date d\'Expédition:'} ${shipDate}
+${currentLang === 'en' ? 'Estimated Delivery:' : 'Livraison Estimée:'} ${estimatedDelivery}
+
+${currentLang === 'en' ? 'Generated on:' : 'Généré le:'} ${new Date().toLocaleString()}
+
+${currentLang === 'en' ? 'Thank you for choosing Global Trade Solutions!' : 'Merci d\'avoir choisi Global Trade Solutions!'}
+            `;
+
+            const blob = new Blob([ticketContent], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tracking-ticket-${trackingCode}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+
+        // Map initialization
+        let map;
+        let routeLine;
+        let packageMarker;
+        let markers = [];
+        let currentSpeed = 0.5;
+        let currentPosition = 1;
+        let progress = 0;
+        let animationRunning = true;
+
+        function initInteractiveMap() {
+            // Initialize the map
+            map = L.map('interactiveMap', {
+                zoomControl: true,
+                attributionControl: true
+            }).setView([35, -100], 3);
+
+            // Add tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(map);
+
+            // Route points
+            const routePoints = [
+                { lat: 31.2304, lng: 121.4737, name: "Shanghai, China", status: "Shipped", date: "01/15 14:00" },
+                { lat: 34.0522, lng: -118.2437, name: "Los Angeles, CA", status: "Arrived at Port", date: "01/18 12:30" },
+                { lat: 39.7392, lng: -104.9903, name: "Denver, CO", status: "In Transit", date: "Estimated: 01/20" },
+                { lat: 41.8781, lng: -87.6298, name: "Chicago, IL", status: "Destination", date: "Estimated: 01/22" }
+            ];
+
+            // Create custom icons
+            const createCustomIcon = (status) => {
+                let color = '#5D5CDE';
+                let icon = '📦';
+                
+                switch(status) {
+                    case 'Shipped': color = '#28a745'; icon = '✅'; break;
+                    case 'Arrived at Port': color = '#FF6B6B'; icon = '🚢'; break;
+                    case 'In Transit': color = '#ffc107'; icon = '⏳'; break;
+                    case 'Destination': color = '#17a2b8'; icon = '🏠'; break;
+                }
+                
+                return L.divIcon({
+                    html: `<div style="background: ${color}; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">${icon}</div>`,
+                    className: 'custom-icon',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                });
+            };
+
+            // Clear previous markers if any
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            // Add markers
+            routePoints.forEach((point, index) => {
+                const marker = L.marker([point.lat, point.lng], {
+                    icon: createCustomIcon(point.status)
+                }).addTo(map);
+                
+                marker.bindPopup(`
+                    <div style="text-align: center; padding: 10px;">
+                        <strong>${point.name}</strong><br>
+                        <span style="color: #666;">${point.status}</span><br>
+                        <small>${point.date}</small>
+                    </div>
+                `);
+                
+                markers.push(marker);
+            });
+
+            // Create route line
+            if (routeLine) {
+                map.removeLayer(routeLine);
+            }
+            routeLine = L.polyline(routePoints.map(p => [p.lat, p.lng]), {
+                color: '#5D5CDE',
+                weight: 4,
+                opacity: 0.7,
+                dashArray: '10, 10'
+            }).addTo(map);
+
+            // Package animation
+            if (packageMarker) {
+                map.removeLayer(packageMarker);
+            }
+            
+            const packageIcon = L.divIcon({
+                html: '<div style="background: #FF6B6B; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4); animation: pulse 2s infinite;">📦</div>',
+                className: 'package-marker',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            packageMarker = L.marker([routePoints[1].lat, routePoints[1].lng], {
+                icon: packageIcon
+            }).addTo(map);
+
+            // Reset animation state
+            currentPosition = 1;
+            progress = 0;
+            animationRunning = true;
+
+            // Start animation
+            setTimeout(() => {
+                animatePackage();
+            }, 2000);
+
+            // Fit bounds
+            map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
+        }
+
+        // Animation function
+        function animatePackage() {
+            if (!animationRunning || currentPosition >= markers.length - 1) return;
+
+            const currentPoint = markers[currentPosition].getLatLng();
+            const nextPoint = markers[currentPosition + 1].getLatLng();
+            
+            // Linear interpolation between points
+            const lat = currentPoint.lat + (nextPoint.lat - currentPoint.lat) * progress;
+            const lng = currentPoint.lng + (nextPoint.lng - currentPoint.lng) * progress;
+            
+            packageMarker.setLatLng([lat, lng]);
+            
+            // Update status
+            document.getElementById('packageStatus').textContent = 
+                progress < 0.5 ? 'In Transit' : 'En route to ' + markers[currentPosition + 1].options.title;
+            
+            // Progress
+            progress += currentSpeed / 1000;
+            
+            if (progress >= 1) {
+                progress = 0;
+                currentPosition++;
+                
+                if (currentPosition < markers.length - 1) {
+                    setTimeout(() => {
+                        animatePackage();
+                    }, 2000);
+                } else {
+                    document.getElementById('packageStatus').textContent = 'Delivered';
+                    document.getElementById('statusIndicator').className = 'w-3 h-3 rounded-full bg-green-500 mr-2';
+                }
+            } else {
+                setTimeout(() => {
+                    animatePackage();
+                }, 50);
+            }
+        }
+
+        // Speed controls
+        window.setSpeed = function(speed) {
+            currentSpeed = speed;
+            
+            // Update UI
+            document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>
